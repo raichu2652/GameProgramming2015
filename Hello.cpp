@@ -43,6 +43,29 @@ void MoveCam(int, int);
 void InitZoom(int, int);
 void ZoomCam(int, int);
 
+void RotateCam(int x, int y);
+void InitZoom2(int, int);
+void ZoomCam2(int, int);
+
+//camera control parameters
+float distance = 700;
+float xSpeed = 10;
+float ySpeed = 10;
+
+float rot_x = 0;
+float rot_y = -30;
+
+bool IsCameraFollow = true;
+
+//camera
+void CameraControl(CHARACTERid targetid);
+
+// math helper functions
+float* EulerToQuarternion(float x, float y, float z);
+float* QuaternionMultiVector(float* quat, float* vec);
+float degToRad(float d);
+float* VectorCross(float* vec1, float* vec2);
+
 /*------------------
 the main program
 C.Wang 1010, 2014
@@ -96,7 +119,7 @@ void FyMain(int argc, char **argv)
 	FnCharacter actor;
 	actor.ID(actorID);
 	pos[0] = 3569.0f; pos[1] = -3208.0f; pos[2] = 1000.0f;
-	fDir[0] = 1.0f; fDir[1] = 1.0f; fDir[2] = 0.0f;
+	fDir[0] = 1.0f; fDir[1] = -1.0f; fDir[2] = 0.0f;
 	uDir[0] = 0.0f; uDir[1] = 0.0f; uDir[2] = 1.0f;
 	actor.SetDirection(fDir, uDir);
 
@@ -121,8 +144,8 @@ void FyMain(int argc, char **argv)
 	camera.SetFarPlane(100000.0f);
 
 	// set camera initial position and orientation
-	pos[0] = 4315.783f; pos[1] = -3199.686f; pos[2] = 93.046f;
-	fDir[0] = -0.983f; fDir[1] = -0.143f; fDir[2] = -0.119f;
+	pos[0] = 4069.0f; pos[1] = -3208.0f; pos[2] = 93.046f;
+	fDir[0] = -500.0f; fDir[1] = -0.0f; fDir[2] = -0.0f;
 	uDir[0] = -0.116f; uDir[1] = -0.031f; uDir[2] = 0.993f;
 	camera.SetPosition(pos);
 	camera.SetDirection(fDir, uDir);
@@ -150,9 +173,17 @@ void FyMain(int argc, char **argv)
 	FyDefineHotKey(FY_LEFT, Movement, FALSE);    // Left for turning left
 
 	// define some mouse functions
-	FyBindMouseFunction(LEFT_MOUSE, InitPivot, PivotCam, NULL, NULL);
-	FyBindMouseFunction(MIDDLE_MOUSE, InitZoom, ZoomCam, NULL, NULL);
-	FyBindMouseFunction(RIGHT_MOUSE, InitMove, MoveCam, NULL, NULL);
+	if (!IsCameraFollow)
+	{
+		FyBindMouseFunction(LEFT_MOUSE, InitPivot, PivotCam, NULL, NULL);
+		FyBindMouseFunction(MIDDLE_MOUSE, InitZoom, ZoomCam, NULL, NULL);
+		FyBindMouseFunction(RIGHT_MOUSE, InitMove, MoveCam, NULL, NULL);
+	}
+	else
+	{
+		FyBindMouseFunction(LEFT_MOUSE, InitZoom2, ZoomCam2, NULL, NULL);
+		FyBindMouseFunction(RIGHT_MOUSE, NULL, RotateCam, NULL, NULL);
+	}
 
 	// bind timers, frame rate = 30 fps
 	FyBindTimer(0, 30.0f, GameAI, TRUE);
@@ -162,6 +193,41 @@ void FyMain(int argc, char **argv)
 	FyInvokeFly(TRUE);
 }
 
+void CameraControl(CHARACTERid targetid)
+{
+	FnCamera camera;
+	camera.ID(cID);
+
+	FnCharacter actor;
+	actor.ID(targetid);
+
+	float targetPos[3];
+	actor.GetPosition(targetPos);
+
+	float negativeDistance[3];
+	negativeDistance[0] = -distance;
+	negativeDistance[1] = 0;
+	negativeDistance[2] = 0;
+
+	float* rotation = EulerToQuarternion(0, degToRad(rot_y), degToRad(rot_x));
+	float* forwardDir = QuaternionMultiVector(rotation, negativeDistance);
+
+	float camPos[3], GlobalRight[3];
+	GlobalRight[0] = 0;
+	GlobalRight[1] = 1;
+	GlobalRight[2] = 0;
+
+
+	camPos[0] = targetPos[0] - forwardDir[0];
+	camPos[1] = targetPos[1] - forwardDir[1];
+	camPos[2] = targetPos[2] - forwardDir[2];
+
+	float* upDir = VectorCross(GlobalRight, forwardDir);
+
+	//camera.Quaternion(rotation[0], rotation[1], rotation[2], rotation[3], GLOBAL);
+	camera.SetPosition(camPos);
+	camera.SetDirection(forwardDir, upDir);
+}
 
 /*-------------------------------------------------------------
 30fps timer callback in fixed frame rate for major game loop
@@ -176,13 +242,17 @@ void GameAI(int skip)
 
 	// Homework #01 part 1
 	if (FyCheckHotKeyStatus(FY_UP))
-		actor.MoveForward(5);
-	else if (FyCheckHotKeyStatus(FY_LEFT))
+		actor.MoveForward(20);
+	if (FyCheckHotKeyStatus(FY_LEFT))
 		actor.TurnRight(-5);
-	else if (FyCheckHotKeyStatus(FY_RIGHT))
+	if (FyCheckHotKeyStatus(FY_RIGHT))
 		actor.TurnRight(5);
-	else {}
+	//else {}
 	// ....
+	if (IsCameraFollow)
+	{
+		CameraControl(actorID);
+	}
 }
 
 
@@ -243,6 +313,83 @@ void RenderIt(int skip)
 
 	// swap buffer
 	FySwapBuffers();
+}
+
+float degToRad(float d)
+{
+	return d*3.14159f / 180;
+}
+
+float* EulerToQuarternion(float x, float y, float z) {
+	// Assuming the angles are in radians.
+	double c1 = cos(y / 2);
+	double s1 = sin(y / 2);
+	double c2 = cos(z / 2);
+	double s2 = sin(z / 2);
+	double c3 = cos(x / 2);
+	double s3 = sin(x / 2);
+	double c1c2 = c1*c2;
+	double s1s2 = s1*s2;
+	float qw = c1c2*c3 - s1s2*s3;
+	float qx = c1c2*s3 + s1s2*c3;
+	float qy = s1*c2*c3 + c1*s2*s3;
+	float qz = c1*s2*c3 - s1*c2*s3;
+
+	static float quarternion[4];
+	quarternion[0] = qw;
+	quarternion[1] = qx;
+	quarternion[2] = qy;
+	quarternion[3] = qz;
+
+	return quarternion;
+}
+
+float* QuaternionMultiVector(float* quat, float* vec){
+	float num = quat[1] * 2;
+	float num2 = quat[2] * 2;
+	float num3 = quat[3] * 2;
+	float num4 = quat[1] * num;
+	float num5 = quat[2] * num2;
+	float num6 = quat[3] * num3;
+	float num7 = quat[1] * num2;
+	float num8 = quat[1] * num3;
+	float num9 = quat[2] * num3;
+	float num10 = quat[0] * num;
+	float num11 = quat[0] * num2;
+	float num12 = quat[0] * num3;
+	
+	static float result[3];
+	result[0] = (1 - (num5 + num6)) * vec[0] + (num7 - num12) * vec[1] + (num8 + num11) * vec[2];
+	result[1] = (num7 + num12) * vec[0] + (1 - (num4 + num6)) * vec[1] + (num9 - num10) * vec[2];
+	result[2] = (num8 - num11) * vec[0] + (num9 + num10) * vec[1] + (1 - (num4 + num5)) * vec[2];
+	return result;
+}
+
+float* VectorCross(float* vec1, float* vec2)
+{
+	static float result[3];
+
+	result[0] = vec1[1] * vec2[2] - vec1[2] * vec2[1];
+	result[1] = vec1[2] * vec2[0] - vec1[0] * vec2[2];
+	result[2] = vec1[0] * vec2[1] - vec1[1] * vec2[0];
+
+	return result;
+}
+
+float ClampAngle(float angle, float min, float max)
+{
+	if (angle < -360.0F)
+		angle += 360.0F;
+	if (angle > 360.0F)
+		angle -= 360.0F;
+
+	float result = angle;
+
+	if (angle > max)
+		result = max;
+	if (angle < min)
+		result = min;
+	return result;
 }
 
 
@@ -372,6 +519,53 @@ void ZoomCam(int x, int y)
 
 		model.ID(cID);
 		model.Translate(0.0f, 0.0f, (float)(x - oldXMM)*10.0f, LOCAL);
+		oldXMM = x;
+		oldYMM = y;
+	}
+}
+
+
+void RotateCam(int x, int y)
+{
+	float axis_x = 0;
+	float axis_y = 0;
+	if (x != oldXM) {
+		if ((float)(x - oldXM) > 0)
+			axis_x = 1;
+		else
+			axis_x = -1;
+
+		oldXM = x;
+	}
+	if (y != oldYM) {
+		if ((float)(y - oldYM) > 0)
+			axis_y = 1;
+		else
+			axis_y = -1;
+
+		oldYM = y;
+	}
+
+
+	rot_x += axis_x*xSpeed*0.02;
+	rot_y += axis_y*ySpeed*0.02;
+
+	rot_y = ClampAngle(rot_y, -80, 20);
+}
+
+void InitZoom2(int x, int y)
+{
+	oldXMM = x;
+	oldYMM = y;
+	frame = 0;
+}
+
+void ZoomCam2(int x, int y)
+{
+	if (x != oldXMM || y != oldYMM) {
+
+		distance += (float)(x - oldXMM)*10.0f;
+
 		oldXMM = x;
 		oldYMM = y;
 	}
