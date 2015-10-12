@@ -177,11 +177,10 @@ void GameAI(int skip)
 	// Homework #01 part 1
 	if (FyCheckHotKeyStatus(FY_UP))
 		actor.MoveForward(5);
-	else if (FyCheckHotKeyStatus(FY_LEFT))
+	if (FyCheckHotKeyStatus(FY_LEFT))
 		actor.TurnRight(-5);
-	else if (FyCheckHotKeyStatus(FY_RIGHT))
+	if (FyCheckHotKeyStatus(FY_RIGHT))
 		actor.TurnRight(5);
-	else {}
 	// ....
 }
 
