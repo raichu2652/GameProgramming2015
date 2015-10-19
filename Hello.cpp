@@ -356,7 +356,7 @@ float* QuaternionMultiVector(float* quat, float* vec){
 	float num9 = quat[2] * num3;
 	float num10 = quat[0] * num;
 	float num11 = quat[0] * num2;
-	float num12 = quat[0] * num3;
+	float num12 = quat[0] * num3 ;
 	
 	static float result[3];
 	result[0] = (1 - (num5 + num6)) * vec[0] + (num7 - num12) * vec[1] + (num8 + num11) * vec[2];
