@@ -15,7 +15,7 @@ Last Updated : 1004, 2015, Kevin C. Wang
 #include "FlyWin32.h"
 
 
-VIEWPORTid vID;                 // the major viewport
+VIEWPORTid vID ;                 // the major viewport
 SCENEid sID;                    // the 3D scene
 OBJECTid cID, tID;              // the main camera and the terrain for terrain following
 CHARACTERid actorID;            // the major character
