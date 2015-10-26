@@ -547,7 +547,7 @@ void RotateCam(int x, int y)
 	}
 
 
-	rot_x += axis_x*xSpeed*0.02;
+	rot_x += axis_x*xSpeed*0.02 ;
 	rot_y += axis_y*ySpeed*0.02;
 
 	rot_y = ClampAngle(rot_y, -80, 20);
